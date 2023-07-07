@@ -1,0 +1,50 @@
+Trigger:-
+
+trigger LeadTrigger on Lead__c (After Update) {
+    
+    if (Trigger.isAfter && Trigger.isUpdate) {
+        LeadHandler.createAccountsAndAssignContacts(Trigger.new, Trigger.oldMap);
+    }
+}
+
+
+Apex class :- 
+
+public class LeadHandler {
+    
+    public static void createAccountsAndAssignContacts(List<Lead__c> newLeads, Map<Id, Lead__c> oldLeads) {
+        Map<String,String> accmap = new Map<String,String>();
+        Set<Id> sid = new Set<Id>();
+        List<Account> ac1 = new List<Account>();
+        for (Lead__c le : newLeads) {
+            if (oldLeads.get(le.Id).Lead_Status__c != 'Opportunity Created' && le.Lead_Status__c == 'Opportunity Created') {
+                sid.add(le.Id);
+                Account acc = new Account();
+                acc.Name = le.Company__c;
+                acc.Country__c = le.Country__c;
+                acc.Industry = le.Industry__c;
+                acc.Lead__c = le.Id;
+                acc.Phone = le.Mobile__c;
+                acc.ShippingState = le.States__c;
+                acc.Sub_Section__c = le.subsection_of__c;
+                acc.Taxation__c = le.Territory__c;
+                acc.Type = 'Customers Reference';
+                acc.Type_Description__c = le.Lead_Source_Description__c;
+                acc.Website = le.Website__c;
+                ac1.add(acc);
+            }
+        }
+        insert ac1;
+        for (Account store : ac1) {
+            accmap.put(store.Lead__c, store.Id);
+        }
+        List<Contact> con = [SELECT Id, AccountId, Lead__c FROM Contact WHERE Lead__c IN :sid];
+        for (Contact co : con) {
+            co.AccountId = accmap.get(co.Lead__c);
+        }
+        if(con.size()>0){
+            update con;  
+        }
+        
+    }
+}
