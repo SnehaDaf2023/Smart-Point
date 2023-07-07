@@ -1,0 +1,96 @@
+
+trigger InsertAndUpdateStartDate on AMC__c (before insert,before Update,after update) {
+  
+    //STEP 1
+    set<id>objAmSet = new set<id>();
+    for(AMC__c objCon : trigger.new){
+        objAmSet.add(objCon.AMC_Plan__c);
+        
+        // Start date = Today
+        
+        if(trigger.isInsert &&trigger.isBefore){
+     AMCTriggerHandler.upplanfield(trigger.new);
+            if(objCon.AMC_Plan__c != null){
+                
+                objCon.Start_Date1__c = system.today();
+            }
+        }
+        // Status__c = 'Expired-Renewed'
+        if(trigger.isUpdate&&trigger.isBefore){
+            if( (objCon.Start_Date1__c != trigger.oldMap.get(objCon.Id).Start_Date1__c)){
+                objCon.Status__c = 'Expired-Renewed';
+            }
+        }
+        //Status__c = 'Expired-Lapsed'
+        if(trigger.isUpdate  && trigger.isBefore){
+            if(objCon.End_Date__c == system.today()){
+                
+                objCon.Status__c = 'Expired-Lapsed';
+            }
+        }
+        //Status__c = 'Live'
+        if(trigger.isInsert && trigger.isBefore){
+            if(objCon.Start_Date1__c != null){
+                
+                objCon.Status__c = 'Live';
+            }
+            
+         }
+  
+    }
+    //STEP 2
+    Map<ID,AMC_Management__c>accMap = new Map<Id,AMC_Management__c>();
+    if(!objAmSet.isEmpty()){
+        for(AMC_Management__c objAcc :  [select Id,Live__c,Expired__c,Renewed__c from AMC_Management__c where Id IN :  objAmSet]){
+            accMap.put(objAcc.Id, objAcc);
+        }   
+    }
+    
+    //STEP 3  
+  if(!accMap.isEmpty()){  
+        for(AMC__c objCon : trigger.new){
+            if(accMap.containsKey(objCon.AMC_Plan__c)){
+                System.debug('Found Id in Map');
+                if(objCon.Status__c == 'Live'){
+                    accMap.get(objCon.AMC_Plan__c).Live__c = 1;
+                }
+                else{
+                    accMap.get(objCon.AMC_Plan__c).Expired__c =0;
+                        accMap.get(objCon.AMC_Plan__c).Renewed__c =0;
+                }
+                
+            }
+            
+            List<AMC_Management__c>accListUpdate = new List<AMC_Management__c>();
+            accListUpdate.addAll(accMap.values());
+            
+            
+            if(!accListUpdate.isEmpty())
+                Database.update(accListUpdate,false);
+        }
+        
+           }
+
+       
+        
+        
+
+    Map<id,AMC_Management__c>objAMCManagement= new Map<id,AMC_Management__c>([select id,Visits__c,Installations_Re_installations__c,Hours_of_Maintenance__c, GST__c,Price__c,Product_Name__r.Name,Training_Hours__c,Update_on_Existing_AMC_s__c from AMC_Management__c where id IN : objAmSet ]);
+    
+     for(AMC__c objCon : trigger.new){
+          AMC_Management__c ab =  objAMCManagement.get(objCon.AMC_Plan__c);
+         if(trigger.isInsert &&  trigger.isBefore){
+            
+              objCon.Training_hours__c = ab.Training_Hours__c;
+             objCon.Supports_hours__c = ab.Hours_of_Maintenance__c;
+             objCon.Installations__c = ab.Installations_Re_installations__c ;
+             objCon.GST__c = ab.GST__c;
+              objCon.Price__c = ab.Price__c;
+             objCon.Visits__c = ab.Visits__c;
+            objCon.Product1__c= ab.Product_Name__r.Name ;
+         }
+       
+         
+   }
+
+}
