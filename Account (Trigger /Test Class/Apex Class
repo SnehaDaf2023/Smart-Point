@@ -1,0 +1,47 @@
+Apex CLass :- 
+
+public class AccountHandler {
+    public static void PreventDeletion(List<Account> oldAccList,Map<Id,Account> oldAccMap){
+        List<Contact> conList = [SELECT AccountId FROM Contact WHERE AccountId in : oldAccMap.keyset()];
+        set<id> setIds = new set<Id>();
+        for(Contact con :conList){
+            setIds.add(con.AccountId);
+        }
+        for(Account acc :oldAccList ){
+            if(setIds.contains(acc.id)){
+                acc.addError('You can not Delete this Account this is associated with Contact and other object');
+            }
+        }
+    }
+}
+
+Trigger :- 
+
+
+trigger AccountTrigger on Account (before delete) {
+      if(Trigger.isBefore && Trigger.isDelete){
+          AccountHandler.PreventDeletion(Trigger.old,Trigger.oldMap);
+   }
+}
+
+
+Test Class:- 
+
+
+@isTest
+private class AccountHandlerTest {
+    @isTest
+    static void testPreventDeletion() {
+        Account testAcc = new Account(Name = 'Test Account');
+        insert testAcc;
+        Contact testCon = new Contact(AccountId = testAcc.Id, FirstName = 'Test', LastName = 'Contact');
+        insert testCon;
+        try {
+            AccountHandler.PreventDeletion(new List<Account>{testAcc}, new Map<Id,Account>{testAcc.Id => testAcc});
+        } catch (DmlException e) {
+            System.assert(e.getDmlMessage(0).contains('You can not Delete this Account'), 'Unexpected error message');
+        }
+        delete testCon;
+        AccountHandler.PreventDeletion(new List<Account>{testAcc}, new Map<Id,Account>{testAcc.Id => testAcc});
+    }
+}
