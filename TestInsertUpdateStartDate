@@ -1,0 +1,92 @@
+@isTest
+public class TestInsertUpdateStartDate {
+ @isTest
+    public static void testUpdateAMCRecords() {
+        
+        // Create Account  test data
+        Account testAccount = new Account();
+        testAccount.Name='Test Account';
+        testAccount.Type= 'Employee Reference';
+        insert testAccount;
+        
+         // Create Contact Record 
+        Contact testContact   = new Contact();
+        testContact.AccountId = testAccount.id;
+        testContact.FirstName='Test FirstName';
+        testContact.LastName='Test LastName';
+        insert testContact;
+        
+        // Create Opportunity Record 
+        Opportunity__c testOpportunity  = new Opportunity__c();
+        testOpportunity.Account_Name__c = testAccount.id;
+        testOpportunity.Name='Test Opportunity ';
+        testOpportunity.Stage__c = 'Negotiation';
+        testOpportunity.Close_Date__c = system.today();
+        insert testOpportunity;
+        
+        
+          // Create product record 
+        Product__c testProduct = new Product__c();
+        testProduct.Name= 'Test Product';
+        insert testProduct;
+       
+        /*
+           // Create price book  record 
+        Price_Book__c testPriceBook = new Price_Book__c();
+        testPriceBook.Name= 'Test Price Book';
+        testPriceBook.Product__c= testProduct.Id;
+        testPriceBook.Currency__c= 'INR,USD';
+        testPriceBook.Price__c= 1001;
+        testPriceBook.No_Of_users__c=1;
+        insert testPriceBook;*/
+        
+     //create AMC Plan Record
+       AMC_Management__c testamcPlan= new AMC_Management__c();
+        testamcPlan.Name='Test AMC Plan';
+        testamcPlan.Product_Name__c=testProduct.Id;
+        testamcPlan.Period__c='Annual';
+        testamcPlan.Type__c='Online';
+        testamcPlan.Hours_of_Maintenance__c=10;
+        testamcPlan.Training_Hours__c=10;
+        testamcPlan.Installations_Re_installations__c=10;
+        testamcPlan.Visits__c=10;
+        testamcPlan.Price__c=10;
+        testamcPlan.GST__c=10;
+        testamcPlan.Coverage_Terms_GUI_Enabled__c='Test';
+        testamcPlan.Update_on_Existing_AMC_s__c = true;
+        insert testamcPlan ;
+        
+        // create AMC Record 
+        AMC__c testAmc = new AMC__c();
+        testAmc.Account__c=testAccount.Id;
+        testAmc.AMC_Plan__c=testamcPlan.Id;
+        testAmc.Primary_Client_Contact__c=testContact.Id;
+        testAmc.Opportunity__c=testOpportunity.Id;
+        testAmc.Primary_Company_Account__c = testAccount.Id ;
+        testAmc.Releted_Primary_Company_Contact__c=testContact.Id;
+        insert testAmc;
+        
+        
+        // Call the updateAMCRecords method
+        Test.startTest();
+        List<AMC__c> amcList = new List<AMC__c>{ testAmc };
+       
+        AmcTriggerClass.upplanfield(amcList);
+        
+      //  InsertAndUpdateStartDateClass.updateAMCRecords(amcList);
+        Test.stopTest();
+        
+        // Verify the results
+        AMC__c updatedAMC = [SELECT Id, AMC_Plan__c, Start_Date1__c, End_Date__c, Status__c, Training_hours__c, Supports_hours__c, Installations__c, GST__c, Price__c, Visits__c, Product1__c  FROM AMC__c WHERE Id = :testAmc.Id];
+        System.assertEquals(System.today(), updatedAMC.Start_Date1__c);
+        System.assertEquals('Live', updatedAMC.Status__c);
+        System.assertEquals(10, updatedAMC.Training_hours__c);
+        System.assertEquals(10, updatedAMC.Supports_hours__c);
+        System.assertEquals(10, updatedAMC.Installations__c);
+        System.assertEquals(10, updatedAMC.GST__c);
+        System.assertEquals(10, updatedAMC.Price__c);
+        System.assertEquals(10, updatedAMC.Visits__c);
+        //System.assertEquals(testPriceBook.Id, updatedAMC.Product1__c);
+    }
+}
+
